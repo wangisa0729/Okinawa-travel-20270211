@@ -140,9 +140,9 @@ footer{text-align:center;font-size:13px;margin-top:30px}
 .busnav .bt{animation:bustext 7s infinite}
 .busnav .bti{animation:busslide 7s infinite}
 }
-@keyframes busdrive{0%{left:-40px;opacity:1;animation-timing-function:cubic-bezier(.45,.05,.4,1)}35%{left:100%;opacity:1}36%,100%{left:100%;opacity:0}}
-@keyframes bustext{0%{clip-path:inset(0 calc(100% + 32px) 0 0);opacity:1;animation-timing-function:cubic-bezier(.45,.05,.4,1)}35%{clip-path:inset(0 0 0 0);opacity:1}88%{clip-path:inset(0 0 0 0);opacity:1}96%,100%{clip-path:inset(0 0 0 0);opacity:0}}
-@keyframes busslide{0%{transform:translateX(-18px);animation-timing-function:cubic-bezier(.45,.05,.4,1)}35%,100%{transform:none}}
+@keyframes busdrive{0%{left:-40px;opacity:0}1%{left:-40px;opacity:1;animation-timing-function:cubic-bezier(.45,.05,.4,1)}35%{left:100%;opacity:1}36%,100%{left:100%;opacity:0}}
+@keyframes bustext{0%{clip-path:inset(0 100% 0 0);opacity:0}1%{clip-path:inset(0 100% 0 0);opacity:1;animation-timing-function:cubic-bezier(.45,.05,.4,1)}35%{clip-path:inset(0 0 0 0);opacity:1}88%{clip-path:inset(0 0 0 0);opacity:1}96%{clip-path:inset(0 0 0 0);opacity:0}97%,100%{clip-path:inset(0 100% 0 0);opacity:0}}
+@keyframes busslide{0%,1%{transform:translateX(-18px)}1%{animation-timing-function:cubic-bezier(.45,.05,.4,1)}35%,100%{transform:none}}
 .bus-bob,.bus-wheel,.bus-spd{transform-box:fill-box;transform-origin:center}
 @media (prefers-reduced-motion:no-preference){
 .bus-bob{animation:busbob .5s ease-in-out infinite alternate}

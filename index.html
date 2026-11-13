@@ -661,45 +661,39 @@ function loadNow(){
  var M=document.getElementById("nowM"),U=document.getElementById("nowU");
  var btn=document.getElementById("nowBtn");
  var controller=(typeof AbortController!=="undefined")?new AbortController():null;
- var timeout=setTimeout(function(){if(controller)controller.abort();},12000);
- if(btn)btn.disabled=true;
- D.textContent="正在更新那霸天氣…";
- U.className="now-u";U.textContent="";
- var requestUrl=NOWURL+(NOWURL.indexOf("?")>=0?"&":"?")+"_="+Date.now();
- fetch(requestUrl,{method:"GET",mode:"cors",cache:"no-store",signal:controller?controller.signal:undefined})
+ var timeout=setTimeout(function(){if(controller)controller.abort();},15000);
+ if(btn){btn.disabled=true;btn.textContent="更新中…";}
+ D.textContent="正在更新那霸天氣…";U.className="now-u";U.textContent="";
+ // 不附加隨機參數，避免部分預覽平台的網址白名單或快取規則誤判
+ fetch(NOWURL,{method:"GET",signal:controller?controller.signal:undefined})
  .then(function(r){
-   if(!r.ok)throw new Error("天氣服務回應異常（HTTP "+r.status+"）");
+   if(!r.ok)throw new Error("HTTP "+r.status+" "+r.statusText);
    return r.json();
  })
  .then(function(j){
    var c=j&&j.current;
-   var required=["temperature_2m","apparent_temperature","relative_humidity_2m","wind_speed_10m","weather_code","is_day"];
-   if(!c||required.some(function(k){return c[k]===undefined||c[k]===null||!Number.isFinite(Number(c[k]));})){
-     throw new Error("天氣服務回傳資料不完整");
-   }
-   var w=wxInfo(Number(c.weather_code),Number(c.is_day)===1);
+   if(!c||typeof c.temperature_2m!=="number")throw new Error("API 回傳內容沒有目前氣溫欄位");
+   var code=Number(c.weather_code),day=Number(c.is_day)===1;
+   var w=wxInfo(code,day);
    document.getElementById("nowIc").innerHTML=icon(w[0]);
-   T.textContent=Math.round(Number(c.temperature_2m))+"°C";
+   T.textContent=Math.round(c.temperature_2m)+"°C";
    D.textContent=w[1];
-   M.innerHTML='<span>體感 '+Math.round(Number(c.apparent_temperature))+'°C</span><span>濕度 '+Math.round(Number(c.relative_humidity_2m))+'%</span><span>風速 '+Math.round(Number(c.wind_speed_10m))+' m/s</span>';
+   var feels=Number(c.apparent_temperature),humidity=Number(c.relative_humidity_2m),wind=Number(c.wind_speed_10m);
+   M.innerHTML='<span>體感 '+(Number.isFinite(feels)?Math.round(feels)+"°C":"--")+'</span><span>濕度 '+(Number.isFinite(humidity)?Math.round(humidity)+"%":"--")+'</span><span>風速 '+(Number.isFinite(wind)?Math.round(wind)+" m/s":"--")+'</span>';
    U.className="now-u";U.textContent="資料來源：Open-Meteo・那霸";
    nowLast=Date.now();
  })
  .catch(function(err){
-   D.textContent="目前無法取得即時天氣";
-   T.textContent="--°C";M.innerHTML="";
+   T.textContent="--°C";M.innerHTML="";D.textContent="目前無法取得即時天氣";
    document.getElementById("nowIc").innerHTML=icon("fog");
    U.className="now-u err";
-   var msg=(err&&err.name==="AbortError")?"連線逾時，請稍後再試。":
-     (err&&err.message==="Failed to fetch")?"目前網路或預覽環境可能阻擋天氣 API。請確認網路，並以 HTTPS 網站（例如 GitHub Pages）開啟。":
-     (err&&err.message?err.message:"請確認網路連線後再試。");
-   U.textContent=msg+" 可按「重新整理」再次取得資料。";
+   var msg=(err&&err.name==="AbortError")?"連線逾時（15 秒）":(err&&err.message?err.message:String(err));
+   U.textContent="錯誤原因："+msg+"。請確認網路或網頁主機是否允許連線至 api.open-meteo.com。";
  })
  .finally(function(){
    clearTimeout(timeout);nowBusy=false;
-   if(btn)btn.disabled=false;
-   clearTimeout(nowRetry);
-   nowRetry=setTimeout(loadNow,5*60*1000);
+   if(btn){btn.disabled=false;btn.textContent="重新整理";}
+   clearTimeout(nowRetry);nowRetry=setTimeout(loadNow,5*60*1000);
  });
 }
 document.getElementById("nowBtn").addEventListener("click",loadNow);

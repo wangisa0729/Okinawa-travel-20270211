@@ -627,54 +627,86 @@ var IC={
  moon:'<path d="M52 12a28 28 0 1 0 16 42 22 22 0 0 1-16-42z" fill="#F6D27A"/>'
 };
 function icon(k){
-  var b;
-  if(k==="sun")b=IC.sun;
-  else if(k==="moon")b=IC.moon;
-  else if(k==="partly")b='<g class="ic-rays" style="transform-origin:28px 28px"><path d="M28 6v6M6 28h6M12 12l4 4M44 12l-4 4" fill="none"/></g><circle cx="28" cy="28" r="12" fill="#F6D27A"/><g class="ic-cloud" transform="translate(8 8)">'+IC.cloud+'</g>';
-  else if(k==="overcast")b='<path d="M30 40h34a10 10 0 0 0 1-20 14 14 0 0 0-26-3 12 12 0 0 0-9 23z" fill="#A8D3E6"/><g class="ic-cloud" transform="translate(-2 6)">'+IC.cloud+'</g>';
-  else if(k==="rain")b='<g class="ic-cloud" transform="translate(0 -10)">'+IC.cloud+'</g><g stroke="#3E3A39"><path class="ic-drop" d="M30 58l-3 8" /><path class="ic-drop" d="M42 58l-3 8"/><path class="ic-drop" d="M54 58l-3 8"/></g>';
-  else if(k==="storm")b='<g transform="translate(0 -10)">'+IC.cloud+'</g><path d="M42 50l-8 12h7l-3 10 12-15h-7z" fill="#F6D27A"/>';
-  else if(k==="fog")b='<g transform="translate(0 -10)">'+IC.cloud+'</g><path d="M20 58h40M26 66h40M20 74h34" fill="none"/>';
-  else b='<g transform="translate(0 -10)">'+IC.cloud+'</g><g fill="#3E3A39" stroke="none"><circle cx="30" cy="62" r="3"/><circle cx="42" cy="68" r="3"/><circle cx="54" cy="62" r="3"/></g>';
-  return '<svg viewBox="0 0 80 80" stroke="#3E3A39" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+b+'</svg>';
+ var b;
+ if(k==="sun")b=IC.sun;
+ else if(k==="moon")b=IC.moon;
+ else if(k==="partly")b='<g class="ic-rays" style="transform-origin:28px 28px"><path d="M28 6v6M6 28h6M12 12l4 4M44 12l-4 4" fill="none"/></g><circle cx="28" cy="28" r="12" fill="#F6D27A"/><g class="ic-cloud" transform="translate(8 8)">'+IC.cloud+'</g>';
+ else if(k==="overcast")b='<path d="M30 40h34a10 10 0 0 0 1-20 14 14 0 0 0-26-3 12 12 0 0 0-9 23z" fill="#A8D3E6"/><g class="ic-cloud" transform="translate(-2 6)">'+IC.cloud+'</g>';
+ else if(k==="rain")b='<g class="ic-cloud" transform="translate(0 -10)">'+IC.cloud+'</g><g stroke="#3E3A39"><path class="ic-drop" d="M30 58l-3 8" /><path class="ic-drop" d="M42 58l-3 8"/><path class="ic-drop" d="M54 58l-3 8"/></g>';
+ else if(k==="storm")b='<g transform="translate(0 -10)">'+IC.cloud+'</g><path d="M42 50l-8 12h7l-3 10 12-15h-7z" fill="#F6D27A"/>';
+ else if(k==="fog")b='<g transform="translate(0 -10)">'+IC.cloud+'</g><path d="M20 58h40M26 66h40M20 74h34" fill="none"/>';
+ else b='<g transform="translate(0 -10)">'+IC.cloud+'</g><g fill="#3E3A39" stroke="none"><circle cx="30" cy="62" r="3"/><circle cx="42" cy="68" r="3"/><circle cx="54" cy="62" r="3"/></g>';
+ return '<svg viewBox="0 0 80 80" stroke="#3E3A39" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+b+'</svg>';
 }
 function wxInfo(c,day){
-  if(c===0)return day?["sun","晴朗"]:["moon","晴朗"];
-  if(c===1)return day?["sun","大致晴朗"]:["moon","大致晴朗"];
-  if(c===2)return ["partly","多雲時晴"];
-  if(c===3)return ["overcast","陰天，滿是烏雲"];
-  if(c===45||c===48)return ["fog","起霧"];
-  if(c>=51&&c<=57)return ["rain","毛毛雨"];
-  if(c===61)return ["rain","下小雨"];
-  if(c===63||c===66)return ["rain","下雨"];
-  if(c===65||c===67)return ["rain","下大雨"];
-  if(c>=71&&c<=77||c===85||c===86)return ["snow","下雪"];
-  if(c>=80&&c<=82)return ["rain","陣雨"];
-  if(c>=95)return ["storm","雷雨"];
-  return ["overcast","陰天"];
+ if(c===0)return day?["sun","晴朗"]:["moon","晴朗"];
+ if(c===1)return day?["sun","大致晴朗"]:["moon","大致晴朗"];
+ if(c===2)return ["partly","多雲時晴"];
+ if(c===3)return ["overcast","陰天，滿是烏雲"];
+ if(c===45||c===48)return ["fog","起霧"];
+ if(c>=51&&c<=57)return ["rain","毛毛雨"];
+ if(c===61)return ["rain","下小雨"];
+ if(c===63||c===66)return ["rain","下雨"];
+ if(c===65||c===67)return ["rain","下大雨"];
+ if((c>=71&&c<=77)||c===85||c===86)return ["snow","下雪"];
+ if(c>=80&&c<=82)return ["rain","陣雨"];
+ if(c>=95)return ["storm","雷雨"];
+ return ["overcast","陰天"];
 }
-var nowLast=0,nowRetry=0;
+var nowLast=0,nowRetry=0,nowBusy=false;
 function loadNow(){
-  var T=document.getElementById("nowT"),D=document.getElementById("nowD"),M=document.getElementById("nowM"),U=document.getElementById("nowU");
-  fetch(NOWURL,{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){
-    var c=j.current,w=wxInfo(c.weather_code,c.is_day===1);
-    document.getElementById("nowIc").innerHTML=icon(w[0]);
-    T.textContent=Math.round(c.temperature_2m)+"°C";D.textContent=w[1];
-    M.innerHTML='<span>體感 '+Math.round(c.apparent_temperature)+'°C</span><span>濕度 '+Math.round(c.relative_humidity_2m)+'%</span><span>風速 '+Math.round(c.wind_speed_10m)+' m/s</span>';
-    U.className="now-u";clearTimeout(nowRetry);
-    U.textContent="";
-    nowLast=Date.now();
-  }).catch(function(){
-    D.textContent="暫時抓不到即時天氣";T.textContent="--°C";M.innerHTML="";
-    document.getElementById("nowIc").innerHTML=icon("fog");
-    U.className="now-u err";
-    U.textContent="請確認網路後按「重新整理」。有些預覽環境會擋掉連線，改用 GitHub Pages 網址開啟即可。";
-    clearTimeout(nowRetry);nowRetry=setTimeout(loadNow,30000);
-  });
+ if(nowBusy)return;
+ nowBusy=true;
+ var T=document.getElementById("nowT"),D=document.getElementById("nowD");
+ var M=document.getElementById("nowM"),U=document.getElementById("nowU");
+ var btn=document.getElementById("nowBtn");
+ var controller=(typeof AbortController!=="undefined")?new AbortController():null;
+ var timeout=setTimeout(function(){if(controller)controller.abort();},12000);
+ if(btn)btn.disabled=true;
+ D.textContent="正在更新那霸天氣…";
+ U.className="now-u";U.textContent="";
+ var requestUrl=NOWURL+(NOWURL.indexOf("?")>=0?"&":"?")+"_="+Date.now();
+ fetch(requestUrl,{method:"GET",mode:"cors",cache:"no-store",signal:controller?controller.signal:undefined})
+ .then(function(r){
+   if(!r.ok)throw new Error("天氣服務回應異常（HTTP "+r.status+"）");
+   return r.json();
+ })
+ .then(function(j){
+   var c=j&&j.current;
+   var required=["temperature_2m","apparent_temperature","relative_humidity_2m","wind_speed_10m","weather_code","is_day"];
+   if(!c||required.some(function(k){return c[k]===undefined||c[k]===null||!Number.isFinite(Number(c[k]));})){
+     throw new Error("天氣服務回傳資料不完整");
+   }
+   var w=wxInfo(Number(c.weather_code),Number(c.is_day)===1);
+   document.getElementById("nowIc").innerHTML=icon(w[0]);
+   T.textContent=Math.round(Number(c.temperature_2m))+"°C";
+   D.textContent=w[1];
+   M.innerHTML='<span>體感 '+Math.round(Number(c.apparent_temperature))+'°C</span><span>濕度 '+Math.round(Number(c.relative_humidity_2m))+'%</span><span>風速 '+Math.round(Number(c.wind_speed_10m))+' m/s</span>';
+   U.className="now-u";U.textContent="資料來源：Open-Meteo・那霸";
+   nowLast=Date.now();
+ })
+ .catch(function(err){
+   D.textContent="目前無法取得即時天氣";
+   T.textContent="--°C";M.innerHTML="";
+   document.getElementById("nowIc").innerHTML=icon("fog");
+   U.className="now-u err";
+   var msg=(err&&err.name==="AbortError")?"連線逾時，請稍後再試。":
+     (err&&err.message==="Failed to fetch")?"目前網路或預覽環境可能阻擋天氣 API。請確認網路，並以 HTTPS 網站（例如 GitHub Pages）開啟。":
+     (err&&err.message?err.message:"請確認網路連線後再試。");
+   U.textContent=msg+" 可按「重新整理」再次取得資料。";
+ })
+ .finally(function(){
+   clearTimeout(timeout);nowBusy=false;
+   if(btn)btn.disabled=false;
+   clearTimeout(nowRetry);
+   nowRetry=setTimeout(loadNow,5*60*1000);
+ });
 }
-document.getElementById("nowBtn").onclick=loadNow;
-loadNow();setInterval(loadNow,60000);
-document.addEventListener("visibilitychange",function(){if(!document.hidden&&Date.now()-nowLast>120000)loadNow()});
+document.getElementById("nowBtn").addEventListener("click",loadNow);
+loadNow();
+document.addEventListener("visibilitychange",function(){
+ if(!document.hidden&&Date.now()-nowLast>120000)loadNow();
+});
 (function(){var sv={};try{sv=JSON.parse(store.get("okw-pack")||"{}")}catch(e){}
 [].forEach.call(document.querySelectorAll("#pack input"),function(c,i){c.checked=!!sv[i];c.onchange=function(){sv[i]=c.checked;store.set("okw-pack",JSON.stringify(sv))}})})();
 (function(){var n=document.querySelector("nav");function f(){document.documentElement.style.setProperty("--nh",n.offsetHeight+"px")}f();addEventListener("resize",f);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(f)})();

@@ -620,7 +620,7 @@ prog();
 });
 
 /* current weather (Naha) */
-var NOWURL="https://api.open-meteo.com/v1/forecast?latitude=26.2124&longitude=127.6809&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FTokyo";
+
 var IC={
  cloud:'<path d="M22 58h38a12 12 0 0 0 1-24 16 16 0 0 0-30-4 14 14 0 0 0-9 28z" fill="#FFFCF6"/>',
  sun:'<g class="ic-rays"><path d="M40 6v8M40 66v8M6 40h8M66 40h8M16 16l6 6M58 58l6 6M64 16l-6 6M22 58l-6 6" fill="none"/></g><circle cx="40" cy="40" r="16" fill="#F6D27A"/>',
@@ -654,46 +654,69 @@ function wxInfo(c,day){
  return ["overcast","陰天"];
 }
 var nowLast=0,nowRetry=0,nowBusy=false;
+var NAHA_PRIMARY="https://api.open-meteo.com/v1/forecast?latitude=26.2124&longitude=127.6809&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FTokyo";
+var NAHA_BACKUP="https://wttr.in/Naha?format=j1&lang=zh";
+function fetchWeatherJSON(url,ms){
+ return new Promise(function(resolve,reject){
+  var ctl=typeof AbortController!=="undefined"?new AbortController():null;
+  var timer=setTimeout(function(){if(ctl)ctl.abort();},ms||10000);
+  fetch(url,{method:"GET",cache:"no-store",headers:{"Accept":"application/json"},signal:ctl?ctl.signal:undefined})
+   .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+   .then(resolve).catch(reject).finally(function(){clearTimeout(timer);});
+ });
+}
+function wttrInfo(code,desc){
+ var n=Number(code),d=String(desc||"").toLowerCase();
+ if(n===113||d.indexOf("sunny")>=0||d.indexOf("clear")>=0)return ["sun","晴朗"];
+ if(n===116||d.indexOf("partly")>=0)return ["partly","多雲時晴"];
+ if(n===119||n===122||d.indexOf("cloud")>=0||d.indexOf("overcast")>=0)return ["overcast","多雲／陰天"];
+ if(n===143||n===248||n===260||d.indexOf("mist")>=0||d.indexOf("fog")>=0)return ["fog","霧／濃霧"];
+ if([200,386,389,392,395].indexOf(n)>=0||d.indexOf("thunder")>=0)return ["storm","雷雨／雷暴"];
+ if((n>=179&&n<=230)||[317,320,323,326,329,332,335,338,350].indexOf(n)>=0||d.indexOf("snow")>=0||d.indexOf("sleet")>=0)return ["snow","降雪／雨夾雪"];
+ if((n>=176&&n<=176)||(n>=185&&n<=185)||(n>=263&&n<=314)||(n>=353&&n<=359)||d.indexOf("rain")>=0||d.indexOf("drizzle")>=0||d.indexOf("shower")>=0)return ["rain","降雨／陣雨"];
+ return ["overcast",desc||"天氣資訊"];
+}
+function renderNow(temp,feels,humidity,wind,weather,source){
+ var T=document.getElementById("nowT"),D=document.getElementById("nowD"),M=document.getElementById("nowM"),U=document.getElementById("nowU");
+ document.getElementById("nowIc").innerHTML=icon(weather[0]);
+ T.textContent=Math.round(temp)+"°C";D.textContent=weather[1];
+ function val(v,unit,digits){return Number.isFinite(Number(v))?Math.round(Number(v))+(unit||""):"--";}
+ M.innerHTML='<span>體感 '+val(feels,"°C")+'</span><span>濕度 '+val(humidity,"%")+'</span><span>風速 '+val(wind," m/s")+'</span>';
+ var dt=new Date().toLocaleString("zh-TW",{timeZone:"Asia/Tokyo",hour12:false,month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+ U.className="now-u";U.textContent="資料來源："+source+"・那霸｜更新時間："+dt+"（日本時間）";
+ nowLast=Date.now();
+}
 function loadNow(){
  if(nowBusy)return;
  nowBusy=true;
- var T=document.getElementById("nowT"),D=document.getElementById("nowD");
- var M=document.getElementById("nowM"),U=document.getElementById("nowU");
- var btn=document.getElementById("nowBtn");
- var controller=(typeof AbortController!=="undefined")?new AbortController():null;
- var timeout=setTimeout(function(){if(controller)controller.abort();},15000);
+ var D=document.getElementById("nowD"),U=document.getElementById("nowU"),btn=document.getElementById("nowBtn");
  if(btn){btn.disabled=true;btn.textContent="更新中…";}
- D.textContent="正在更新那霸天氣…";U.className="now-u";U.textContent="";
- // 不附加隨機參數，避免部分預覽平台的網址白名單或快取規則誤判
- fetch(NOWURL,{method:"GET",signal:controller?controller.signal:undefined})
- .then(function(r){
-   if(!r.ok)throw new Error("HTTP "+r.status+" "+r.statusText);
-   return r.json();
- })
- .then(function(j){
-   var c=j&&j.current;
-   if(!c||typeof c.temperature_2m!=="number")throw new Error("API 回傳內容沒有目前氣溫欄位");
-   var code=Number(c.weather_code),day=Number(c.is_day)===1;
-   var w=wxInfo(code,day);
-   document.getElementById("nowIc").innerHTML=icon(w[0]);
-   T.textContent=Math.round(c.temperature_2m)+"°C";
-   D.textContent=w[1];
-   var feels=Number(c.apparent_temperature),humidity=Number(c.relative_humidity_2m),wind=Number(c.wind_speed_10m);
-   M.innerHTML='<span>體感 '+(Number.isFinite(feels)?Math.round(feels)+"°C":"--")+'</span><span>濕度 '+(Number.isFinite(humidity)?Math.round(humidity)+"%":"--")+'</span><span>風速 '+(Number.isFinite(wind)?Math.round(wind)+" m/s":"--")+'</span>';
-   U.className="now-u";U.textContent="資料來源：Open-Meteo・那霸";
-   nowLast=Date.now();
- })
- .catch(function(err){
-   T.textContent="--°C";M.innerHTML="";D.textContent="目前無法取得即時天氣";
-   document.getElementById("nowIc").innerHTML=icon("fog");
-   U.className="now-u err";
-   var msg=(err&&err.name==="AbortError")?"連線逾時（15 秒）":(err&&err.message?err.message:String(err));
-   U.textContent="錯誤原因："+msg+"。請確認網路或網頁主機是否允許連線至 api.open-meteo.com。";
- })
- .finally(function(){
-   clearTimeout(timeout);nowBusy=false;
-   if(btn){btn.disabled=false;btn.textContent="重新整理";}
-   clearTimeout(nowRetry);nowRetry=setTimeout(loadNow,5*60*1000);
+ D.textContent="正在連線取得那霸即時天氣…";U.className="now-u";U.textContent="優先連線主要資料源，失敗時自動切換備援";
+ fetchWeatherJSON(NAHA_PRIMARY,10000).then(function(j){
+  var c=j&&j.current;
+  if(!c||!Number.isFinite(Number(c.temperature_2m)))throw new Error("主要來源資料格式不完整");
+  renderNow(c.temperature_2m,c.apparent_temperature,c.relative_humidity_2m,c.wind_speed_10m,wxInfo(Number(c.weather_code),Number(c.is_day)===1),"Open-Meteo");
+ }).catch(function(primaryError){
+  var url=NAHA_BACKUP+"&_="+Date.now();
+  return fetchWeatherJSON(url,12000).then(function(j){
+   var c=j&&j.current_condition&&j.current_condition[0];
+   if(!c||!Number.isFinite(Number(c.temp_C)))throw new Error("備援來源資料格式不完整");
+   var desc=c.weatherDesc&&c.weatherDesc[0]?c.weatherDesc[0].value:"";
+   renderNow(c.temp_C,c.FeelsLikeC,c.humidity,(Number(c.windspeedKmph)/3.6),wttrInfo(c.weatherCode,desc),"wttr.in（備援）");
+  }).catch(function(backupError){
+   throw new Error("主要來源："+(primaryError.message||"連線失敗")+"；備援來源："+(backupError.message||"連線失敗"));
+  });
+ }).catch(function(err){
+  document.getElementById("nowT").textContent="--°C";
+  document.getElementById("nowM").innerHTML="";
+  D.textContent="暫時無法取得即時天氣";
+  document.getElementById("nowIc").innerHTML=icon("fog");
+  U.className="now-u err";
+  U.textContent="兩個天氣來源目前都無法連線。請確認網頁所在平台是否允許外部 API 請求；稍後可按「重新整理」再試。";
+ }).finally(function(){
+  nowBusy=false;
+  if(btn){btn.disabled=false;btn.textContent="重新整理";}
+  clearTimeout(nowRetry);nowRetry=setTimeout(loadNow,10*60*1000);
  });
 }
 document.getElementById("nowBtn").addEventListener("click",loadNow);
